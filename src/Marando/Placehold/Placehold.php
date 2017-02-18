@@ -34,6 +34,7 @@ class Placehold
     private $bgColor;
     private $text;
     private $font;
+    private $padding;
 
     /**
      * Creates a new placeholder image.
@@ -43,6 +44,7 @@ class Placehold
      * @param string $bgColor Hex background color
      * @param string $fgColor Hex foreground color
      * @param null   $text    Optional alternate text
+     * @param float  $padding
      * @param string $font    Optional alternate font
      */
     public function __construct(
@@ -51,6 +53,7 @@ class Placehold
       $bgColor = '#201d1d',
       $fgColor = '#b3b2b2',
       $text = null,
+      $padding = 0.618,
       $font = 'Raleway-Bold'
     ) {
         $this->width   = $width;
@@ -59,6 +62,7 @@ class Placehold
         $this->fgColor = $fgColor;
         $this->text    = $text;
         $this->font    = $font;
+        $this->padding = $padding;
     }
 
     /**
@@ -81,7 +85,7 @@ class Placehold
 
         // Calculate font size
         $fontSize    = 1;
-        $txtMaxWidth = intval(0.618 * $this->width);
+        $txtMaxWidth = intval($this->padding * $this->width);
         $fontPath    = realpath(__DIR__ . "/../../../fonts/{$this->font}.ttf");
         do {
             $fontSize++;

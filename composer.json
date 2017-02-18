@@ -1,13 +1,15 @@
 {
-    "name": "marando/placehold",
-    "authors": [
-        {
-            "name": "Ashley Marando",
-            "email": "a.marando@me.com"
-        }
-    ],
-    "require": {},
-    "autoload": {
+  "name": "marando/placehold",
+  "authors": [
+    {
+      "name": "Ashley Marando",
+      "email": "a.marando@me.com"
+    }
+  ],
+  "require": {
+    "symfony/var-dumper": "^3.2"
+  },
+  "autoload": {
     "psr-0": {
       "Marando": "src/"
     }
