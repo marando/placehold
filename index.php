@@ -1,7 +1,6 @@
 <?php
 require 'vendor/autoload.php';
 use \Marando\Placehold\Placehold;
-use \Marando\Placehold\Placehold2;
 
 ?>
 
@@ -15,7 +14,7 @@ use \Marando\Placehold\Placehold2;
 
     <?php
     $img =
-      Placehold2::make('jpeg')
+      Placehold::make('jpeg')
         ->size(200, 300)
         ->fg("#000")
         ->bg("#bbb")
@@ -25,7 +24,7 @@ use \Marando\Placehold\Placehold2;
 
     <?php
     $img =
-      Placehold2::make()
+      Placehold::make()
         ->size(300, 200)
         ->fg("#bbb")
         ->bg("#000")
@@ -39,12 +38,12 @@ use \Marando\Placehold\Placehold2;
 
     <?php
     $img =
-      Placehold2::make()
+      Placehold::make()
         ->size(300, 200)
         ->fg("inv")
         ->bg("rand")
-        ->font('Raleway Bold')
         ->text("No Image")
+        ->font('Roboto Condensed Bold')
         ->maxFont(0.618)
 
     ?>
@@ -52,19 +51,25 @@ use \Marando\Placehold\Placehold2;
 
     <?php
     $img =
-      Placehold2::make()
+      Placehold::make()
         ->size(200, 200)
         ->bg("rand")
-        ->font('Raleway Bold')
         ->maxFont(0.618)
 
     ?>
   <img src="<?php echo $img ?>">
 
 
-  <img src="<?php echo Placehold2::rand(200, 400) ?>">
+  <img src="<?php echo Placehold::rand(200, 400) ?>">
 
-  <img style="max-width:300px" src="<?php echo Placehold2::rand()->bg('#444') ?>">
+  <img style="max-width:300px" src="<?php echo Placehold::rand()->bg('#444') ?>">
+
+
+    <?php for ($i = 0; $i < 50; $i++) { ?>
+
+      <img src="<?php echo Placehold::rand(200, 400) ?>">
+
+    <?php } ?>
 
 </body>
 </html>
