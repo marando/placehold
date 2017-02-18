@@ -21,45 +21,188 @@
 namespace Marando\Placehold;
 
 /**
- * Generates base64 placeholder holder image data.
+ * Generates a placeholder image as a base 64 HTML image uri.
  *
  * @package Marando\Placehold
  */
 class Placehold
 {
+    //--------------------------------------------------------------------------
+    // Constants
+    //--------------------------------------------------------------------------
 
-    private $height;
-    private $width;
-    private $fgColor;
-    private $bgColor;
-    private $text;
-    private $font;
+    /**
+     * Default font for the placeholder image.
+     */
+    const DefaultFont = 'Roboto Condensed Regular';
+
+    /**
+     * Threshold of background brightness for using black as auto foreground.
+     */
+    const BlackThreshold = 0.5;
+
+    //--------------------------------------------------------------------------
+    // Variables
+    //--------------------------------------------------------------------------
+
+    private $height = 250;
+    private $width = 250;
+    private $fgColor = 'auto';
+    private $bgColor = '#444';
+    private $text = null;
+    private $font = null;
+    private $ratio = 0.618;
+    private $format = 'png';
+
+    //--------------------------------------------------------------------------
+    // Constructors
+    //--------------------------------------------------------------------------
 
     /**
      * Creates a new placeholder image.
      *
-     * @param int    $width   Image width
-     * @param int    $height  Image height
-     * @param string $bgColor Hex background color
-     * @param string $fgColor Hex foreground color
-     * @param null   $text    Optional alternate text
-     * @param string $font    Optional alternate font
+     * @param $format
      */
-    public function __construct(
-      $width = 250,
-      $height = 250,
-      $bgColor = '#201d1d',
-      $fgColor = '#b3b2b2',
-      $text = null,
-      $font = 'Raleway-Bold'
-    ) {
-        $this->width   = $width;
-        $this->height  = $height;
-        $this->bgColor = $bgColor;
-        $this->fgColor = $fgColor;
-        $this->text    = $text;
-        $this->font    = $font;
+    private function __construct($format)
+    {
+        $this->format = $format;
     }
+
+    /**
+     * Make a new placeholder image.
+     *
+     * @param string $format
+     *
+     * @return static
+     */
+    public static function make($format = 'png')
+    {
+        return new static($format);
+    }
+
+    /**
+     * Make a new random placeholder image. This randomizes both the dimensions
+     * and the background color. Foreground will be automatically chosen based
+     * on the lightness of the background.
+     *
+     * @param int $min Minimum dimensions.
+     * @param int $max Maximum dimensions.
+     *
+     * @return $this
+     */
+    public static function rand($min = 500, $max = 900)
+    {
+        $width  = rand($min, $max);
+        $height = rand($min, $max);
+
+        return static::make()->size($width, $height)->bg("rand");
+    }
+
+    //--------------------------------------------------------------------------
+    // Functions
+    //--------------------------------------------------------------------------
+
+    /**
+     * Sets the width and height of the image.
+     *
+     * @param int $width
+     * @param int $height
+     *
+     * @return $this
+     */
+    public function size(int $width, int $height)
+    {
+        $this->width  = $width;
+        $this->height = $height;
+
+        return $this;
+    }
+
+    /**
+     * Sets the foreground color.
+     *
+     * Note: Default behavior is to chose either black or white based on the
+     * brightness of the background color.
+     *
+     * Passing 'inv' will cause the foreground color to be the inverse of the
+     * background color.
+     *
+     * @param $hex
+     *
+     * @return $this
+     */
+    public function fg($hex = 'auto')
+    {
+        if ($hex == 'rand') {
+            $this->fgColor = $this->randHex();
+        } else {
+            $this->fgColor = $hex;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Sets the background color.
+     *
+     * @param $hex
+     *
+     * @return $this
+     */
+    public function bg($hex)
+    {
+        if ($hex == 'rand') {
+            $this->bgColor = $this->randHex();
+        } else {
+            $this->bgColor = $hex;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Sets the font typeface.
+     *
+     * @param $font
+     *
+     * @return $this
+     */
+    public function font($font)
+    {
+        $this->font = $font;
+
+        return $this;
+    }
+
+    /**
+     * Sets the text of the image. Default is the dimensions of the image.
+     *
+     * @param $text
+     *
+     * @return $this
+     */
+    public function text($text)
+    {
+        $this->text = $text;
+
+        return $this;
+    }
+
+    /**
+     * Sets the maximum font size as a ratio of the image width.
+     *
+     * @param $ratio
+     *
+     * @return $this
+     */
+    public function maxFont($ratio)
+    {
+        $this->ratio = $ratio;
+
+        return $this;
+    }
+
+    // // // Private
 
     /**
      * Renders this instance to a base 64 string.
@@ -68,11 +211,19 @@ class Placehold
      */
     private function render()
     {
-        // Image text
-        $text = $this->getText();
-
         // Create image and colors.
-        $image   = imagecreatetruecolor($this->width, $this->height);
+        $image = imagecreatetruecolor($this->width, $this->height);
+
+        // Set the foreground color...
+        if ($this->fgColor == 'auto') {
+            // If auto foreground, find appropriate color based on background.
+            $this->fgColor = static::autoContrastColor($this->bgColor);
+        } elseif ($this->fgColor == 'inv') {
+            // If inverse, find the inverse of the background.
+            $this->fgColor = $this->inverseHex($this->bgColor);
+        }
+
+        // Create colors...
         $bgColor = $this->hexToResourceColor($image, $this->bgColor);
         $fgColor = $this->hexToResourceColor($image, $this->fgColor);
 
@@ -80,9 +231,10 @@ class Placehold
         imagefill($image, 0, 0, $bgColor);
 
         // Calculate font size
+        $text        = $this->getText();
+        $fontPath    = $this->getFontPath($this->font);
         $fontSize    = 1;
-        $txtMaxWidth = intval(0.618 * $this->width);
-        $fontPath    = realpath(__DIR__ . "/../../../fonts/{$this->font}.ttf");
+        $txtMaxWidth = intval($this->ratio * $this->width);
         do {
             $fontSize++;
             $p        = imagettfbbox($fontSize, 0, $fontPath, $text);
@@ -96,7 +248,8 @@ class Placehold
         // Draw text
         imagettftext($image, $fontSize, 0, $x, $y, $fgColor, $fontPath, $text);
 
-        return $this->imageToBase64($image);
+        // Return base 64
+        return $this->imageToBase64($image, $this->format);
     }
 
     /**
@@ -111,6 +264,45 @@ class Placehold
         return $this->text ? $this->text : "{$this->width}{$x}{$this->height}";
     }
 
+    // // // Static
+
+    /**
+     * Gets the path to a font, returns the default if the font does not exist.
+     *
+     * @return string
+     */
+    private static function getFontPath($font)
+    {
+        $font     = str_replace(' ', '-', $font);
+        $fontPath = realpath(__DIR__ . "/../../../fonts/{$font}.ttf");
+
+        if (file_exists($fontPath)) {
+            return $fontPath;
+        } else {
+            $default = str_replace(' ', '-', static::DefaultFont);
+
+            return realpath(__DIR__ . "/../../../fonts/{$default}.ttf");
+        }
+
+    }
+
+    private static function hex2Rgb($hex)
+    {
+        $hex = preg_replace("/[^a-fA-F0-9]+/", "", $hex);
+
+        if (strlen($hex) == 3) {
+            $r = hexdec($hex[0] . $hex[0]);
+            $g = hexdec($hex[1] . $hex[1]);
+            $b = hexdec($hex[2] . $hex[2]);
+        } else {
+            $r = hexdec($hex[0] . $hex[1]);
+            $g = hexdec($hex[2] . $hex[3]);
+            $b = hexdec($hex[4] . $hex[5]);
+        }
+
+        return [$r, $g, $b];
+    }
+
     /**
      * Converts a hex color to a GD color.
      *
@@ -119,19 +311,11 @@ class Placehold
      *
      * @return int
      */
-    private function hexToResourceColor($img, $hex)
+    private static function hexToResourceColor($img, $hex)
     {
         $hex = preg_replace("/[^a-fA-F0-9]+/", "", $hex);
 
-        if (strlen($hex) == 3) {
-            $r = hexdec(substr($hex, 0, 1) . substr($hex, 0, 1));
-            $g = hexdec(substr($hex, 1, 1) . substr($hex, 1, 1));
-            $b = hexdec(substr($hex, 2, 1) . substr($hex, 2, 1));
-        } else {
-            $r = hexdec(substr($hex, 0, 2));
-            $g = hexdec(substr($hex, 2, 2));
-            $b = hexdec(substr($hex, 4, 2));
-        }
+        list($r, $g, $b) = static::hex2Rgb($hex);
 
         return imagecolorallocate($img, $r, $g, $b);
     }
@@ -143,15 +327,136 @@ class Placehold
      *
      * @return string
      */
-    private function imageToBase64($img)
+    private static function imageToBase64($img, $format)
     {
         ob_start();
-        imagepng($img);
+
+        switch ($format) {
+            case 'jpeg':
+                imagejpeg($img);
+                break;
+
+            case 'gif':
+                imagegif($img);
+                break;
+
+            default:
+            case 'png':
+                imagepng($img);
+                break;
+        }
+
+
         $binary = ob_get_contents();
         ob_end_clean();
 
-        return "data:image/png;base64," . base64_encode($binary);
+        return "data:image/{$format};base64," . base64_encode($binary);
     }
+
+    /**
+     * Generates a random hex color.
+     *
+     * @return string
+     */
+    private static function randHex()
+    {
+        return sprintf('%06X', mt_rand(0, 0xFFFFFF));
+    }
+
+    /**
+     * Automatically returns white or black based on best contrast to input hex
+     * color.
+     *
+     * @param $hex
+     *
+     * @return string
+     */
+    private static function autoContrastColor($hex)
+    {
+        list($r, $g, $b) = static::hex2Rgb($hex);
+        list($H, $S, $L) = static::hex2Hsl($hex);
+
+        return $L > static::BlackThreshold ? '#000' : '#fff';
+    }
+
+    /**
+     * Inverts a hex color.
+     *
+     * @param $hex
+     *
+     * @return string
+     */
+    private static function inverseHex($hex)
+    {
+        $hex = str_replace('#', '', $hex);
+        if (strlen($hex) != 6) {
+            return '000000';
+        }
+        $rgb = '';
+        for ($x = 0; $x < 3; $x++) {
+            $c = 255 - hexdec(substr($hex, (2 * $x), 2));
+            $c = ($c < 0) ? 0 : dechex($c);
+            $rgb .= (strlen($c) < 2) ? '0' . $c : $c;
+        }
+
+        return '#' . $rgb;
+    }
+
+    /**
+     * Converts a hex color to HSL
+     *
+     * @param $hex
+     *
+     * @return array
+     */
+    private static function hex2Hsl($hex)
+    {
+        $hex = str_replace('#', '', $hex);
+
+        if (strlen($hex) == 3) {
+            $hex =
+              $hex[0] . $hex[0] .
+              $hex[1] . $hex[1] .
+              $hex[2] . $hex[2];
+        }
+
+        $hex = [$hex[0] . $hex[1], $hex[2] . $hex[3], $hex[4] . $hex[5]];
+        $rgb = array_map(function ($part) {
+            return hexdec($part) / 255;
+        }, $hex);
+
+        $max = max($rgb);
+        $min = min($rgb);
+
+        $l = ($max + $min) / 2;
+
+        if ($max == $min) {
+            $h = $s = 0;
+        } else {
+            $diff = $max - $min;
+            $s    = $l > 0.5 ? $diff / (2 - $max - $min) : $diff / ($max + $min);
+
+            switch ($max) {
+                case $rgb[0]:
+                    $h = ($rgb[1] - $rgb[2]) / $diff + ($rgb[1] < $rgb[2] ? 6 : 0);
+                    break;
+                case $rgb[1]:
+                    $h = ($rgb[2] - $rgb[0]) / $diff + 2;
+                    break;
+                case $rgb[2]:
+                    $h = ($rgb[0] - $rgb[1]) / $diff + 4;
+                    break;
+            }
+
+            $h /= 6;
+        }
+
+        return [$h, $s, $l];
+    }
+
+    //--------------------------------------------------------------------------
+    // Overloads
+    //--------------------------------------------------------------------------
 
     /**
      * String value of this object.
