@@ -23,15 +23,15 @@ namespace Marando\Placehold;
 use Marando\Color\Color;
 
 /**
- *
+ * Generates a placeholder image as a base 64 HTML image uri.
  *
  * @package Marando\Placehold
  *
- * @property int    $width
- * @property int    $height
- * @property Color  $bgColor
- * @property Color  $fgColor
- * @property string $font
+ * @property int    $width   Width of the image.
+ * @property int    $height  Height of the image.
+ * @property Color  $bgColor Background color of the image.
+ * @property Color  $fgColor Foreground (text) color of the image.
+ * @property string $font    Font face for the image.
  */
 class Placehold
 {
@@ -73,6 +73,7 @@ class Placehold
     // Variables
     //--------------------------------------------------------------------------
 
+    private $format;
     private $width;
     private $height;
     private $bgColor;
@@ -106,41 +107,63 @@ class Placehold
      */
     private function __construct($format)
     {
-        $this->format = static::validateFormat($format);
-
-        $this->width  = static::DefaultWidth;
-        $this->height = static::DefaultHeight;
-
+        // Set defaults...
+        $this->format  = static::validateFormat($format);
+        $this->width   = static::DefaultWidth;
+        $this->height  = static::DefaultHeight;
         $this->bgColor = Color::hex(static::DefaultBackground);
         $this->fgColor = Color::hex(static::DefaultForeground);
-
         $this->font    = static::DefaultFont;
         $this->padding = 1 - static::DefaultPadding;
     }
 
-    // // // Private
+    // // // Static
 
     /**
-     * @param int $compression Must be 0 (least compression) to 9 (most).
+     * Creates a new placeholder image using the PNG format.
+     *
+     * @param int $compression Must be 0 to 9, (9 = most compression).
      *
      * @return static
+     * @throws \Exception
      */
     public static function png($compression = 9)
     {
+        if ($compression > 9 || $compression < 0) {
+            throw new \Exception('PNG compression must be 0 to 9');
+        }
+
         $png          = new static('png');
         $png->quality = $compression;
 
         return $png;
     }
 
+    /**
+     * Creates a new placeholder image using the JPEG format.
+     *
+     * @param int $quality Must be 0 to 100, (0 = most compressed).
+     *
+     * @return static
+     * @throws \Exception
+     */
     public static function jpg($quality = 80)
     {
+        if ($quality > 100 || $quality < 0) {
+            throw new \Exception('JPEG compression must be 0 to 100');
+        }
+
         $jpeg          = new static('jpeg');
         $jpeg->quality = $quality;
 
         return $jpeg;
     }
 
+    /**
+     * Creates a new placeholder image using the GIF format.
+     *
+     * @return static
+     */
     public static function gif()
     {
         return new static('gif');
@@ -150,6 +173,14 @@ class Placehold
     // Builder Functions
     //--------------------------------------------------------------------------
 
+    /**
+     * Sets the width and height of this image.
+     *
+     * @param $width
+     * @param $height
+     *
+     * @return $this
+     */
     public function size($width, $height)
     {
         $this->width  = $width;
@@ -158,6 +189,14 @@ class Placehold
         return $this;
     }
 
+    /**
+     * Use a random width and height for this image.
+     *
+     * @param int $min Minimum width/height length.
+     * @param int $max Maximum width/height length.
+     *
+     * @return $this
+     */
     public function sizeRand($min = 315, $max = 560)
     {
         $this->size(mt_rand($min, $max), mt_rand($min, $max));
@@ -165,14 +204,33 @@ class Placehold
         return $this;
     }
 
+    /**
+     * Sets the background color of this image. Valid values are hex, and html
+     * hsl and rgb values.
+     *
+     * @param string|null $color Hex, hsl or rgb.
+     *
+     * @return $this
+     */
     public function bg($color = null)
     {
+        // Convert color to Color object and find auto foreground color.
         $this->bgColor = static::getColorInstance($color);
         $this->fgColor = static::autoContrast($this->bgColor);
 
         return $this;
     }
 
+    /**
+     * Uses a random background color for this image. If no arguments are
+     * provided a totally random color is selected. If both arguments are
+     * provided then a color between the two is randomly selected.
+     *
+     * @param string|null $colorA
+     * @param string|null $colorB
+     *
+     * @return Placehold
+     */
     public function bgRand($colorA = null, $colorB = null)
     {
         if ($colorA && $colorB) {
@@ -184,14 +242,33 @@ class Placehold
         return $this->bg($bgColor);
     }
 
+    /**
+     * Sets the foreground color of this image. Valid values are hex, and html
+     * hsl and rgb values.
+     *
+     * @param string|null $color Hex, hsl or rgb.
+     *
+     * @return $this
+     */
     public function fg($color)
     {
+        // Convert color to Color object and find auto background color.
         $this->fgColor = static::getColorInstance($color);
         $this->bgColor = static::autoContrast($this->fgColor);
 
         return $this;
     }
 
+    /**
+     * Uses a random foreground color for this image. If no arguments are
+     * provided a totally random color is selected. If both arguments are
+     * provided then a color between the two is randomly selected.
+     *
+     * @param string|null $colorA
+     * @param string|null $colorB
+     *
+     * @return Placehold
+     */
     public function fgRand($colorA = null, $colorB = null)
     {
         if ($colorA && $colorB) {
@@ -203,13 +280,30 @@ class Placehold
         return $this->fg($fgColor);
     }
 
+    /**
+     * Sets the padding between the width of the image and it's text.
+     *
+     * @param $padding Total ratio of left and right padding of text.
+     *
+     * @return $this
+     */
     public function padding($padding)
     {
+        // Use reciprocal... basically becomes ratio of text size.
         $this->padding = 1 - $padding;
 
         return $this;
     }
 
+    /**
+     * Sets the text of this image. The parameter can either be a string of the
+     * text, or a call back which returns the text. The callback has one
+     * parameter with this instance set to it for access inside the callback.
+     *
+     * @param string|callable $text
+     *
+     * @return $this
+     */
     public function text($text)
     {
         if (is_string($text)) {
@@ -224,7 +318,9 @@ class Placehold
     }
 
     /**
-     * @param $font
+     * Sets the font face for this image.
+     *
+     * @param $font Name of the font with weight, e.g. "Raleway 900"
      *
      * @return $this
      */
@@ -235,6 +331,11 @@ class Placehold
         return $this;
     }
 
+    /**
+     * Generates a random image. Randomizes the size and background.
+     *
+     * @return Placehold
+     */
     public function rand()
     {
         return $this->bgRand()->sizeRand();
@@ -244,10 +345,17 @@ class Placehold
     // Functions
     //--------------------------------------------------------------------------
 
+    /**
+     * Renders this image.
+     *
+     * @return string
+     */
     private function render()
     {
+        // Create image
         $image = imagecreatetruecolor($this->width, $this->height);
 
+        // Convert colors to GD colors...
         $bgColor =
           imagecolorallocate(
             $image,
@@ -264,12 +372,14 @@ class Placehold
             $this->fgColor->b
           );
 
+        // Fill background.
         imagefill($image, 0, 0, $bgColor);
 
-        // Get and prepare image text
+        // Get and prepare image text.
         $text = $this->text ?? "{$this->width}&times;{$this->height}";
         $text = html_entity_decode($text);
 
+        // Write the image text.
         static::imageTtfTextCenter(
           $image,
           $text,
@@ -278,6 +388,7 @@ class Placehold
           $fgColor
         );
 
+        // Return base 64...
         return static::imageToHtmlBase64($image, $this->format, $this->quality);
     }
 
@@ -285,6 +396,16 @@ class Placehold
     // Static Functions
     //--------------------------------------------------------------------------
 
+    /**
+     * Draws centered text with a TTF font on a GD image resource at the
+     * specified ratio to the image width.
+     *
+     * @param $image     GD image resource.
+     * @param $text      Text to draw.
+     * @param $fontPath  Path to TTF font.
+     * @param $fontRatio Ratio of text size to image width.
+     * @param $color     Text color.
+     */
     private static function imageTtfTextCenter(
       $image,
       $text,
@@ -312,14 +433,22 @@ class Placehold
           $image, $fontSize, 0, $x, $y, $color, $fontPath, $text);
     }
 
+    /**
+     * Selects the best contrast color for an input color from choices of white
+     * or black.
+     *
+     * @param Color $c
+     *
+     * @return Color
+     */
     private static function autoContrast(Color $c)
     {
         $black = Color::hex('#000000');
         $white = Color::hex('#ffffff');
 
+        // Use the option with the largest delta...
         $deltaBlack = $c->dist($black);
         $deltaWhite = $c->dist($white);
-
         if (min($deltaBlack, $deltaWhite) == $deltaBlack) {
             return $white;
         } else {
@@ -328,18 +457,35 @@ class Placehold
 
     }
 
+    /**
+     * Gets the path to a font stored locally.
+     *
+     * @param $font
+     *
+     * @return string
+     */
     private static function getFontPath($font)
     {
         $fontBase = __DIR__ . '/../../../fonts';
         $font     = str_replace(' ', '-', $font);
 
+        // Only return if it exists...
         if ($path = realpath("{$fontBase}/{$font}.ttf")) {
             return $path;
+        } else {
+            // Return default font
+            return static::getFontPath(static::DefaultFont);
         }
-
-        return static::getFontPath(static::DefaultFont);
     }
 
+    /**
+     * Converts a string representation of a color (hex, html hsl or rgb) or a
+     * Color instance to a Color instance.
+     *
+     * @param string|Color $color
+     *
+     * @return Color
+     */
     private static function getColorInstance($color)
     {
         if ($color instanceof Color) {
@@ -349,6 +495,15 @@ class Placehold
         return Color::parse($color);
     }
 
+    /**
+     * Validates an image format is supported. Throws an exception if it is not
+     * otherwise returns the format string.
+     *
+     * @param string $format
+     *
+     * @return mixed
+     * @throws \Exception
+     */
     private static function validateFormat($format)
     {
         $formats = ['png', 'jpeg', 'gif'];
@@ -360,6 +515,16 @@ class Placehold
         }
     }
 
+    /**
+     * Converts a GD image resource to HTML base 64 for embedding in an image
+     * tag.
+     *
+     * @param $image   GD image resource.
+     * @param $format  Image format to write.
+     * @param $quality Image quality to write (only for JPEG and PNG).
+     *
+     * @return string
+     */
     private static function imageToHtmlBase64($image, $format, $quality)
     {
         ob_start();
@@ -379,7 +544,6 @@ class Placehold
                 break;
         }
 
-
         $binary = ob_get_contents();
         ob_end_clean();
 
@@ -387,7 +551,7 @@ class Placehold
     }
 
     /**
-     * Randomizes a color between two colors.
+     * Picks a random color between two colors.
      *
      * @param $colorA
      * @param $colorB
@@ -419,6 +583,11 @@ class Placehold
     // Overrides
     //--------------------------------------------------------------------------
 
+    /**
+     * String value is the base 64 representation of the image.
+     *
+     * @return string
+     */
     function __toString()
     {
         return $this->render();
