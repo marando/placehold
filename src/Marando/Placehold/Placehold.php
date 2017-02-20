@@ -199,6 +199,13 @@ class Placehold
      */
     public function sizeRand($min = 315, $max = 560)
     {
+        if ($max < $min) {
+            $temp = $max;
+            $max  = $min;
+            $min  = $temp;
+        }
+
+
         $this->size(mt_rand($min, $max), mt_rand($min, $max));
 
         return $this;
@@ -449,6 +456,7 @@ class Placehold
         // Use the option with the largest delta...
         $deltaBlack = $c->dist($black);
         $deltaWhite = $c->dist($white);
+
         if (min($deltaBlack, $deltaWhite) == $deltaBlack) {
             return $white;
         } else {

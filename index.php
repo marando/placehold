@@ -7,6 +7,8 @@ use \Marando\Placehold\Placehold;
 
 <body style="background: #000; color: #fff">
 
+  <img src="<?= Placehold::png()->size(140, 190)->bg('#834') ?>">
+
 
   <img src="<?= Placehold::jpg(20)->sizeRand(120, 200) ?>">
 
@@ -15,18 +17,81 @@ use \Marando\Placehold\Placehold;
 
   <img src="<?= Placehold::png(9)->rand()->size(120, 200) ?>">
 
+  <br><br>
+    <?php for ($i = 0; $i < 12; $i++) { ?>
+      <img src="<?=
+      $img = Placehold::png()
+        ->sizeRand(240, 120)
+        ->bgRand('hsl(0, 2%, 4%)', 'hsl(4, 12%, 24%)')
+        ->text(function ($e) {
+            return $e->bgColor;
 
-    <?php exit; ?>
+            return sprintf(
+              'hsl(%d, %d%%, %d%%)',
+              $e->bgColor->h,
+              $e->bgColor->s * 100,
+              $e->bgColor->l * 100
+            );
+        });
+      ?>">
+    <?php } ?>
+
+  <br><br>
+    <?php for ($i = 0; $i < 12; $i++) { ?>
+      <img src="<?=
+      $img = Placehold::png()
+        ->sizeRand(240, 120)
+        ->bgRand()
+        ->text(function ($e) {
+            return $e->bgColor;
+
+            return sprintf(
+              'hsl(%d, %d%%, %d%%)',
+              $e->bgColor->h,
+              $e->bgColor->s * 100,
+              $e->bgColor->l * 100
+            );
+        });
+      ?>">
+    <?php } ?>
+
+  <br><br>
+    <?php for ($i = 0; $i < 12; $i++) { ?>
+      <img src="<?=
+      $img = Placehold::png()
+        ->sizeRand(240, 120)
+        ->bgRand();
+      ?>">
+    <?php } ?>
+
 
   <br><br>
     <?php for ($i = 0; $i < 12; $i++) { ?>
       <img src="<?=
       $img = Placehold::png()
         ->size(120, 120)
-        //->bg(['hsl', [180, 190], [0, 0.9], [0.33, 0.9]])
+        ->bgRand()
         ->font('Roboto Condensed Light')
         ->text(function ($e) {
             return $e->bgColor;
+        });
+      ?>">
+    <?php } ?>
+
+  <br><br>
+    <?php for ($i = 0; $i < 360; $i += 45) { ?>
+      <img src="<?=
+      $img = Placehold::png()
+        ->size(250, 90)
+        ->bg("hsl({$i}, 50%, 50%)")
+        ->font('Roboto Condensed 400')
+        ->text(function ($e) {
+            return sprintf(
+              'hsl(%d, %d%%, %d%%)',
+              $e->bgColor->h,
+              $e->bgColor->s * 100,
+              $e->bgColor->l * 100
+            );
         });
       ?>">
     <?php } ?>
@@ -62,4 +127,6 @@ use \Marando\Placehold\Placehold;
   $img = Placehold::png()->fgRand()->sizeRand(50, 100);
   ?>">
 
+
+  <br><br><br><br>
 </body>
