@@ -1,6 +1,20 @@
 # placehold
 
 
+
+```shell
+./run 
+```
+
+
+
+
+
+
+
+
+
+
 ## Installation
 
 ```shell
